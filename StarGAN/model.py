@@ -3,6 +3,7 @@ import torch.nn as nn
 
 # generator and discriminator for STARGAN 
 
+#RES BLOCK
 class Residual_block(nn.Module):
     def __init__(self, input_nc):
         super(Residual_block, self).__init__()
@@ -18,7 +19,7 @@ class Residual_block(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-
+#GENERATOR
 class Generator(nn.Module):
     def __init__(self, input_nc, output_nc, resblocks=6):
         super(Generator, self).__init__()
@@ -61,7 +62,7 @@ class Generator(nn.Module):
         return self.model(x)
 
 
-
+#DISCRIMINATOR
 class Discriminator(nn.Module):
     def __init__(self, input_nc, repeat=6):
         super(Discriminator, self).__init__()
@@ -88,24 +89,10 @@ class Discriminator(nn.Module):
 
         return out_src, out_cls.view(out_cls.size(0), out_cls.size(1))
 
+# I think the code is pretty self explanatory !
+if __name__ == "__main__":
+    net = Generator(3,3)
+    another = Discriminator(3)
 
-net = Generator(3,3)
-another = Discriminator(3)
-
-print(net)
-print(another)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    print(net)
+    print(another)
