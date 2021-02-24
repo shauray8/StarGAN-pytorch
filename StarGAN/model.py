@@ -61,9 +61,39 @@ class Generator(nn.Module):
         return self.model(x)
 
 
+
+class Discriminator(nn.Module):
+    def __init__(self, input_nc, repeat=6):
+        super(Discriminator, self).__init__()
+        
+        in_features = 64
+        model = [nn.Conv2d(input_nc, in_features, kernel_size=4, stride=2,padding=1),
+                nn.LeakyReLU(0.01)]
+        
+
+        for i in range(1, repeat):
+            model += [nn.Conv2d(in_features, in_features*2, kernel_size=3, stride=2, padding=1),
+                    nn.LeakyReLU(0.01)]
+            in_features *= 2
+
+        self.model = nn.Sequential(*model)
+        self.conv1 = nn.Conv2d(in_features, 1, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(in_features, input_nc, kernel_size=2, bias=False)
+
+
+    def forward(self, x):
+        x = self.model(x)
+        out_src = self.conv1(x)
+        out_cls = self.conv2(x)
+
+        return out_src, out_cls.view(out_cls.size(0), out_cls.size(1))
+
+
 net = Generator(3,3)
+another = Discriminator(3)
 
 print(net)
+print(another)
 
 
 
