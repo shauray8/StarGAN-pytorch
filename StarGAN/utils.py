@@ -1,5 +1,8 @@
 import torch 
 
+class 
+
+
 def number_of_paras(model):
     num = 0
     for p in model.parameters():
@@ -9,6 +12,7 @@ def number_of_paras(model):
 
 def onehot_labels(c_org, input_nc, dataset, selected_attrs):
     pass    
+
 
 
 if __name__ == "__main__":
