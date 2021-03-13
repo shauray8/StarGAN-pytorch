@@ -5,7 +5,7 @@ import torch.optim as optim
 from torchvision import transforms, datasets
 from torch.utils.data import DataLoader, Dataset
 import itertools
-from utils import onehot_labels, number_of_paras
+from utils import onehot_labels, number_of_paras, loader as get_loader
 
 # Variables  
 input_nc = 3
@@ -26,15 +26,14 @@ g_optimize = optim.Adam(G.parameters(), lr=lr, betas = (0.5, 0.999))
 D_optimize = optim.Adam(D.parameters(), lr=lr, betas = (0.5, 0.999))
 
 #Loading data
-transform = [   transforms.RandomCrop(size),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                transforms.Normalize((.5, .5, .5), (.5, .5, .5)) ]
-
-data_loader = DataLoader(datasets.ImageFolder("../../data/CelebA", transform=transform),
-        batch_size=batch_size, shuffle=True)
-
-# trying and testing not working right now
+image_dir = "../../data/CelebA/celeba"
+attr_dir = "../../data/CelebA/list_attr_celeba.csv"
+selected_attrs = ['Black_Hair', 'Blond_Hair', 'Brown_Hair', 'Male', 'Young']
+crop_size = 178
+image_size = 128
+batch_size = 32
+data_loader = get_loader(image_dir, attr_dir, selected_attrs, crop_size, image_size,
+        batch_size, "CelebA", "train")
 
 data_iter = iter(data_loader)
 x_fixed, c_org = next(data_iter)
@@ -42,3 +41,4 @@ x_fixed, c_org = next(data_iter)
 #c_fixed_list = onehot_labels(c_org, input_nc, dataset, selected_attrs)
 
 print(x_fixed[0])
+print(c_org[0])

@@ -4,7 +4,7 @@ from torch.utils import data
 from PIL import Image
 import os, random
 
-class CelebA(data.dataset):
+class CelebA(data.Dataset):
     def __init__(self, image_dir, attr_path, selected_attrs, transform, mode):
         self.image_dir = image_dir
         self.attr_path = attr_path
@@ -21,46 +21,56 @@ class CelebA(data.dataset):
             self.num_images = len(self.train_dataset)
         else:
             self.num_imagaes = len(self.test_dataset)
-
+    
+    # preprocessing the data
     def preprocess(self):
+        # opens the csv to read the attributes 
         lines = [line.rstrip() for line in open(self.attr_path,"r")]
-        all_attr_names = lines[1].split()
+        # splits the first line with all the parameters
+        all_attr_names = lines[0].split(",")
         for i, attr_name in enumerate(all_attr_names):
+            #gives every attribute an index and vice-versa
             self.attr2idx[attr_name] = i
             self.idx2attr[i] = attr_name
-
-        lines = lines[2:]
+        
+        # now we dont need the first line with all the titles
+        lines = lines[1:]
         random.seed(1234)
         random.shuffle(lines)
         for i, line in enumerate(lines):
-            split = line.split()
+            # splits the line into attributes eg (-1,1)
+            split = line.split(",")
             filename = split[0]
+            # the first value is the name of the file and rest is attributes
             values = split[1:]
-
+            
             label = []
             for attr_name in self.selected_attrs:
-                idx = self.attr2idx[attr_name]
+                # givies a label acc to the selected attrs to train on eg(true, false)
+                idx = self.attr2idx[attr_name]-1
                 label.append(values[idx] == "1")
 
+            # divides stuff into train and test
             if (i+1) < 2000:
                 self.test_dataset.append([filename, label])
             else:
                 self.train_dataset.append([filename, label])
 
-        print("preprocession the dataset status: DONE")
+        print("preprocessing the dataset status: DONE")
 
+    # to get the image and respective label for training
     def __getitem__(self, index):
-        dataset = self.train_dataset if self.mode = "train" else self.test.dataset  
+        dataset = self.train_dataset if self.mode == "train" else self.test_dataset  
         filename, label = dataset[index]
         image = Image.open(os.path.join(self.image_dir, filename))
         return self.transform(image), torch.FloatTensor(label)
 
+    # spits out the length 
     def __len__(self):
         return self.num_images
 
 
-
-
+# for testing purposes only 
 def number_of_paras(model):
     num = 0
     for p in model.parameters():
@@ -75,6 +85,7 @@ def onehot_labels(c_org, input_nc, dataset, selected_attrs):
 def loader(image_dir, attr_path, selected_attrs, crop_size=178, image_size=128,
         batch_size=16, dataset="CelebA", mode="train"):
 
+    # transform the data 
     transform = []
     if mode == 'train':
         transform.append(T.RandomHorizontalFlip())
@@ -84,8 +95,9 @@ def loader(image_dir, attr_path, selected_attrs, crop_size=178, image_size=128,
         transform.append(T.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)))
         transform = T.Compose(transform)
 
-    dataset = CelebA(image_dir, attr_path, selcted_attrs, transform, mode)
+    dataset = CelebA(image_dir, attr_path, selected_attrs, transform, mode)
 
+    # loads the data and returns it for training 
     data_loader = data.DataLoader(dataset=dataset, batch_size=batch_size,
             shuffle=(mode=="train"))
 
