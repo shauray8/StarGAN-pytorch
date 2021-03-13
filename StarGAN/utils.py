@@ -1,6 +1,8 @@
 import torch 
 from torchvision import transforms as T
 from torch.utils import data
+from PIL import Image
+import os, random
 
 class CelebA(data.dataset):
     def __init__(self, image_dir, attr_path, selected_attrs, transform, mode):
