@@ -5,7 +5,7 @@ import torch.optim as optim
 from torchvision import transforms, datasets
 from torch.utils.data import DataLoader, Dataset
 import itertools
-from utils import onehot_labels, number_of_paras, loader as get_loader
+from utils import onehot_labels, number_of_paras, loader as get_loader, gradient_penalty
 
 # Variables  
 input_nc = 3
@@ -42,5 +42,51 @@ x_fixed, c_org = next(data_iter)
 x_fixed = x_fixed.to(device)
 c_fixed_list = onehot_labels(c_org, input_nc, dataset, selected_attrs)
 
+classify_loss = F.binary_cross_entropy_with_logits(logit, target, size_average=False)/logit.size(0)
+
+epochs = 50
+lambda_cls = 1
+lambda_gb = 10
+
 for epoch in (l := trange(epochs)):
-    x_real, lable_org = next(data_iter)
+    x_real, label_org = next(data_iter)
+
+    rand_idx = torch.randperm(label_org.size(0))
+    label_trg = label_org[rand_idx]
+
+    c_org = label_org.clone()
+    c_trg = label_trg.clone()
+
+    x_real = x_real.to(device)
+    c_org = c_org.to(device)
+    c_trg = c_trg.to(device)
+    label_org = label_org.to(device)
+    label_trg = label_trg.to(device)
+
+    ## TRAIN THE DISCRIMINATOR ##
+
+    #Loss with real images
+    out_src, out_cls = D(x_real)
+    d_loss_real = - torch.mean(out_src)
+    d_loss_cls = classify_loss(out_cls, label_org)
+
+    #loss with fake images
+    x_fake = G(x_real, c_trg)
+    out_src, out_cls = D(x_fake.detach())
+    d_loss_fake = torch.mean(out_src)
+
+    # compute loss for gradient penelty
+    alpha = torch.rand(x_real.size(0),1,1,1).to(device)
+    x_hat = (alpha * x_real.data + (1 - alpha) * x_fake.data).requires_grad_(True)
+    out_src, _ = D(x_hat)
+    d_loss_gp = gradient_penalty(out_src, x_hat)
+
+
+    d_loss = d_loss_real _ d_loss_fake + lambda_cls * d_Loss_cls + lambda_gp * d_loss_gp
+    g_optimizer.zero_grad()
+    d_optimizer.zero_grad()
+    d_loss.backward()
+    d_optimizer.step()
+
+    
+    ## TRAIN THE GENERATOR ##
