@@ -11,6 +11,8 @@ from utils import onehot_labels, number_of_paras, loader as get_loader
 input_nc = 3
 output_nc = 3
 lr = 0.0002
+g_lr = 0.0001
+d_lr = 0.0001
 batch_size = 32
 size=256
 dataset = "CelebA"
@@ -37,8 +39,8 @@ data_loader = get_loader(image_dir, attr_dir, selected_attrs, crop_size, image_s
 
 data_iter = iter(data_loader)
 x_fixed, c_org = next(data_iter)
-#x_fixed = x_fixed.to(device)
-#c_fixed_list = onehot_labels(c_org, input_nc, dataset, selected_attrs)
+x_fixed = x_fixed.to(device)
+c_fixed_list = onehot_labels(c_org, input_nc, dataset, selected_attrs)
 
-print(x_fixed[0])
-print(c_org[0])
+for epoch in (l := trange(epochs)):
+    x_real, lable_org = next(data_iter)
