@@ -2,6 +2,6 @@
 
 writing a generative adversarial network called StarGAN 
 
-updating readme on the go !
+#### writing how this thing works in free time (maybe) 
 
 if you want to read the official paper its [here](https://arxiv.org/pdf/1711.09020.pdf)
