@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 
 # generator and discriminator for STARGAN 
 
@@ -23,8 +24,8 @@ class Residual_block(nn.Module):
 class Generator(nn.Module):
     def __init__(self, input_nc, output_nc, resblocks=6):
         super(Generator, self).__init__()
-
-        model = [nn.Conv2d(input_nc, 64, kernel_size=7, stride=1, padding=3, bias=False),
+        c_dim = 5
+        model = [nn.Conv2d(8, 64, kernel_size=7, stride=1, padding=3, bias=False),
                 nn.InstanceNorm2d(64, affine=True, track_running_stats=True),
                 nn.ReLU(inplace=True),]
 
@@ -58,9 +59,11 @@ class Generator(nn.Module):
         self.model = nn.Sequential(*model)
 
 
-    def forward(self, x):
+    def forward(self, x, c):
+        c = c.view(c.size(0), c.size(1),1,1)
+        c = c.repeat(1,1,x.size(2),x.size(3))
+        x = torch.cat([x,c], dim=1)
         return self.model(x)
-
 
 #DISCRIMINATOR
 class Discriminator(nn.Module):
@@ -77,16 +80,16 @@ class Discriminator(nn.Module):
                     nn.LeakyReLU(0.01)]
             in_features *= 2
 
+        kernel_size = int(128 / np.power(2, repeat))
         self.model = nn.Sequential(*model)
         self.conv1 = nn.Conv2d(in_features, 1, kernel_size=3, stride=1, padding=1, bias=False)
-        self.conv2 = nn.Conv2d(in_features, input_nc, kernel_size=2, bias=False)
+        self.conv2 = nn.Conv2d(in_features, 5, kernel_size=kernel_size, bias=False)
 
 
     def forward(self, x):
         x = self.model(x)
         out_src = self.conv1(x)
         out_cls = self.conv2(x)
-
         return out_src, out_cls.view(out_cls.size(0), out_cls.size(1))
 
 # I think the code is pretty self explanatory !

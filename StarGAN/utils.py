@@ -1,6 +1,7 @@
 import torch 
 from torchvision import transforms as T
 from torch.utils import data
+import torch.nn.functional as F
 from PIL import Image
 import os, random
 
@@ -113,6 +114,14 @@ def gradient_penalty(y,x):
     dydx_l2norm = torch.sqrt(torch.sum(dydx**2, dim=1))
     return torch.mean((dydx_l2norm-1)**2)
 
+def classify_loss(logit, target):
+    """Compute binary or softmax cross entropy loss."""
+    return F.binary_cross_entropy_with_logits(logit, target, size_average=False) / logit.size(0)
+
+def denorm(self, x):
+        """Convert the range from [-1, 1] to [0, 1]."""
+        out = (x + 1) / 2
+        return out.clamp_(0, 1)
 
 if __name__ == "__main__":
     print("utility functions and classes")
