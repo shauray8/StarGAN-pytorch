@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader, Dataset
 import itertools
 from utils import onehot_labels, number_of_paras, loader as get_loader, gradient_penalty
 from utils import denorm, classify_loss
-import time, os, sys
+import time, os, sys, datetime
 
 torch.cuda.empty_cache()
 torch.cuda.memory_summary(device=None, abbreviated=False)
@@ -22,7 +22,6 @@ d_lr = 0.0001
 batch_size = 32
 size=256
 dataset = "CelebA"
-selected_attrs = ['Black_Hair', 'Blond_Hair', 'Brown_Hair', 'Male', 'Young']
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 device  = "cpu"
 
@@ -50,7 +49,7 @@ x_fixed = x_fixed.to(device)
 c_fixed_list = onehot_labels(c_org, input_nc, dataset, selected_attrs)
 
 
-epochs = 50
+epochs = 200000
 lambda_cls = 1
 lambda_gb = 10
 lambda_rec = 10
@@ -67,8 +66,13 @@ lr_update_step = 1000
 
 if __name__ == "__main__":
     start_time = time.time()
-    for epoch in (l := trange(epochs)):
-        x_real, label_org = next(data_iter)
+    for epoch in (l := trange(num_iters)):
+        try:
+            x_real, label_org = next(data_iter)
+        except:
+            data_iter = iter(data_loader)
+            x_real, label_org = next(data_iter)
+
         rand_idx = torch.randperm(label_org.size(0))
         label_trg = label_org[rand_idx]
 
@@ -138,7 +142,7 @@ if __name__ == "__main__":
         if (epoch+1) % log_step == 0:
             et = time.time() - start_time
             et = str(datetime.timedelta(seconds=et))[:-7]
-            log = "Elapsed [{}], Iteration [{}/{}]".format(et, i+1, num_iters)
+            log = "Elapsed [{}], Iteration [{}/{}]".format(et, epoch+1, num_iters)
             for tag, value in loss.items():
                 log += ", {}: {:.4f}".format(tag, value)
             print(log)
@@ -151,14 +155,14 @@ if __name__ == "__main__":
                 for c_fixed in c_fixed_list:
                     x_fake_list.append(G(x_fixed, c_fixed))
                 x_concat = torch.cat(x_fake_list, dim=3)
-                sample_path = os.path.join(sample_dir, '{}-images.jpg'.format(i+1))
+                sample_path = os.path.join(sample_dir, '{}-images.jpg'.format(epoch+1))
                 save_image(denorm(x_concat.data.cpu()), sample_path, nrow=1, padding=0)
                 print('Saved real and fake images into {}...'.format(sample_path))
 
         # Save model checkpoints.
         if (epoch+1) % model_save_step == 0:
-            G_path = os.path.join(model_save_dir, '{}-G.ckpt'.format(i+1))
-            D_path = os.path.join(model_save_dir, '{}-D.ckpt'.format(i+1))
+            G_path = os.path.join(model_save_dir, '{}-G.ckpt'.format(epoch+1))
+            D_path = os.path.join(model_save_dir, '{}-D.ckpt'.format(epoch+1))
             torch.save(G.state_dict(), G_path)
             torch.save(D.state_dict(), D_path)
             print('Saved model checkpoints into {}...'.format(model_save_dir))
