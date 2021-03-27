@@ -8,6 +8,10 @@ from torch.utils.data import DataLoader, Dataset
 import itertools
 from utils import onehot_labels, number_of_paras, loader as get_loader, gradient_penalty
 from utils import denorm, classify_loss
+import time, os, sys
+
+torch.cuda.empty_cache()
+torch.cuda.memory_summary(device=None, abbreviated=False)
 
 # Variables  
 input_nc = 3
@@ -15,19 +19,20 @@ output_nc = 3
 lr = 0.0002
 g_lr = 0.0001
 d_lr = 0.0001
-batch_size = 16
+batch_size = 32
 size=256
 dataset = "CelebA"
 selected_attrs = ['Black_Hair', 'Blond_Hair', 'Brown_Hair', 'Male', 'Young']
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device  = "cpu"
 
 #initializing the generator and the discriminator
 G = Generator(input_nc, output_nc).to(device)
 D = Discriminator(input_nc).to(device)
 
 # optimization function
-g_optimize = optim.Adam(G.parameters(), lr=lr, betas = (0.5, 0.999))
-D_optimize = optim.Adam(D.parameters(), lr=lr, betas = (0.5, 0.999))
+g_optimizer = optim.Adam(G.parameters(), lr=lr, betas = (0.5, 0.999))
+d_optimizer = optim.Adam(D.parameters(), lr=lr, betas = (0.5, 0.999))
 
 #Loading data
 image_dir = "../../data/CelebA/celeba"
@@ -48,6 +53,7 @@ c_fixed_list = onehot_labels(c_org, input_nc, dataset, selected_attrs)
 epochs = 50
 lambda_cls = 1
 lambda_gb = 10
+lambda_rec = 10
 n_critic = 5
 num_iters = 200000
 num_iters_decay = 100000
@@ -58,8 +64,9 @@ sample_step = 1000
 model_save_step = 10000
 lr_update_step = 1000
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
+    start_time = time.time()
     for epoch in (l := trange(epochs)):
         x_real, label_org = next(data_iter)
         rand_idx = torch.randperm(label_org.size(0))
@@ -94,16 +101,21 @@ if __name__ == "__main__":
         d_loss_gp = gradient_penalty(out_src, x_hat)
 
 
-        d_loss = d_loss_real , d_loss_fake + lambda_cls * d_Loss_cls + lambda_gp * d_loss_gp
+        d_loss = d_loss_real + d_loss_fake + lambda_cls * d_loss_cls + lambda_gb * d_loss_gp
         g_optimizer.zero_grad()
         d_optimizer.zero_grad()
         d_loss.backward()
         d_optimizer.step()
 
+        loss = {}
+        loss['D/loss_real'] = d_loss_real.item()
+        loss['D/loss_fake'] = d_loss_fake.item()
+        loss['D/loss_cls'] = d_loss_cls.item()
+        loss['D/loss_gp'] = d_loss_gp.item()
         
         ## TRAIN THE GENERATOR ##
 
-        if (i+1) % n_critic == 0:
+        if (epoch+1) % n_critic == 0:
             x_fake = G(x_real, c_trg)
             out_src, out_cls = D(x_fake)
             g_loss_fake = - torch.mean(out_src)
@@ -123,7 +135,7 @@ if __name__ == "__main__":
             loss['G/loss_rec'] = g_loss_rec.item()
             loss['G/loss_cls'] = g_loss_cls.item()
 
-        if (i+1) % log_step == 0:
+        if (epoch+1) % log_step == 0:
             et = time.time() - start_time
             et = str(datetime.timedelta(seconds=et))[:-7]
             log = "Elapsed [{}], Iteration [{}/{}]".format(et, i+1, num_iters)
@@ -133,7 +145,7 @@ if __name__ == "__main__":
 
 
         # Translate fixed images for debugging.
-        if (i+1) % sample_step == 0:
+        if (epoch+1) % sample_step == 0:
             with torch.no_grad():
                 x_fake_list = [x_fixed]
                 for c_fixed in c_fixed_list:
@@ -144,7 +156,7 @@ if __name__ == "__main__":
                 print('Saved real and fake images into {}...'.format(sample_path))
 
         # Save model checkpoints.
-        if (i+1) % model_save_step == 0:
+        if (epoch+1) % model_save_step == 0:
             G_path = os.path.join(model_save_dir, '{}-G.ckpt'.format(i+1))
             D_path = os.path.join(model_save_dir, '{}-D.ckpt'.format(i+1))
             torch.save(G.state_dict(), G_path)
@@ -152,7 +164,7 @@ if __name__ == "__main__":
             print('Saved model checkpoints into {}...'.format(model_save_dir))
 
         # Decay learning rates.
-        if (i+1) % lr_update_step == 0 and (i+1) > (num_iters - num_iters_decay):
+        if (epoch+1) % lr_update_step == 0 and (i+1) > (num_iters - num_iters_decay):
             g_lr -= (g_lr / float(num_iters_decay))
             d_lr -= (d_lr / float(num_iters_decay))
             update_lr(g_lr, d_lr)

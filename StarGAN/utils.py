@@ -104,8 +104,10 @@ def loader(image_dir, attr_path, selected_attrs, crop_size=178, image_size=128,
 
     return data_loader
 
+device = ["cuda" if torch.cuda.is_available() else "cpu"]
+device = "cpu"
 def gradient_penalty(y,x):
-    weight = torch.ones(y.size()).to("cuda")
+    weight = torch.ones(y.size()).to(device)
     dydx = torch.autograd.grad(outputs=y, inputs=x,
             grad_outputs=weight, retain_graph=True, create_graph=True,
             only_inputs = True)[0]
